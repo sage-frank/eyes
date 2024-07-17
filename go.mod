@@ -9,8 +9,6 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.12.1
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/getsentry/sentry-go v0.27.0
-	github.com/gin-contrib/pprof v1.4.0
-	github.com/gin-contrib/requestid v0.0.6
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
@@ -36,7 +34,6 @@ require (
 	github.com/go-sql-driver/mysql v1.8.0
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/rabbitmq/amqp091-go v1.9.0
-	github.com/rogpeppe/go-internal v1.10.0
 	github.com/stretchr/testify v1.8.4
 	github.com/xuri/excelize/v2 v2.8.1
 	github.com/zsais/go-gin-prometheus v0.1.0
