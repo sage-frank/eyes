@@ -1,0 +1,79 @@
+name: "eyes"
+mode: "prod"
+host: 127.0.0.1
+port: 8081
+
+version: "v0.0.1"
+start_time: "2023-12-12"
+machine_id: 1
+rim: "use"
+
+auth:
+  jwt_expire: 8760
+
+log:
+  level: "info"
+  filename: "web_app.log"
+  err_filename: "err.log"
+  max_size: 200
+  max_age: 30
+  max_backups: 7
+
+mysql:
+  host: "127.0.0.1"
+  port: 3306
+  user: "root"
+  password: ""
+  dbname: "eyes"
+  max_open_conns: 200
+  max_idle_conns: 50
+  show_sql: true
+
+rabbit:
+  host: "127.0.0.1"
+  port: 5672
+  user: "rabbit"
+  password: "rabbit"
+  dbname: "virtual_host"
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 100
+
+jwt:
+  public_key: |
+    -----BEGIN PUBLIC KEY-----
+    TlfOQxklZOPqVMNBG0F5l0201RzyYn3mefGpeDhtjLSNWW1sUZUU7C5Mez6lV0P6
+    YwIDAQAB
+    -----END PUBLIC KEY-----
+  app_id:
+  app_key:
+  app_secret:
+  portal:
+  base_url:
+
+proxy:
+  domain: http://127.0.0.1:3559
+
+tencentcloud:
+  secret_id:
+  secret_key:
+
+es:
+  host: http://localhost
+  port: 9200
+  user:
+  password:
+  close_database: true
+  attack_type: D
+
+email:
+  driver: smtp
+  host: smtp.163.com
+  port: 587
+  username:
+  password:
+  encryption: tls

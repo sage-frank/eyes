@@ -1,0 +1,167 @@
+# yaml 配置
+#version: "3.9"
+services:
+
+  elasticsearch:
+    restart: always
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xms2g -Xmx2g"
+      TZ: "UTC"
+    volumes:
+      - ./elastic/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./elastic/data:/usr/share/elasticsearch/data
+      - ./elastic/plugins:/usr/share/elasticsearch/plugins
+    networks:
+      - elasticsearch-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "-u", "elastic:bkJ=GhV-PiYYpCKVekic", "http://localhost:9200/_cluster/health" ]
+      interval: 30s
+      retries: 3
+      start_period: 30s
+  #
+  #  filebeat:
+  #    restart: always
+  #    image: docker.elastic.co/beats/filebeat:8.9.2
+  #    user: root
+  #    container_name: filebeat
+  #    entrypoint: "filebeat -e --strict.perms=false -c filebeat.yml"
+  #    environment:
+  #      TZ: "UTC"
+  #    volumes:
+  #      - D:\code\eyes\file-beat\filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+  #      - D:\code\eyes\file-beat\data\:/usr/share/filebeat/data
+  #      - web_logs:/var/log/eyes
+  #    networks:
+  #      - elasticsearch-network
+  #    depends_on:
+  #      - elasticsearch
+  #    cap_add:
+  #      - SYS_ADMIN
+
+  kibana:
+    restart: always
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    environment:
+      server.host: "0.0.0.0"
+      server.name: "kibana"
+      TZ: "UTC"
+    volumes:
+      - ./elastic/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+    networks:
+      - elasticsearch-network
+
+  mysql8029-1:
+    image: "mysql:8.0.29"
+    container_name: mysql8029-1
+    ports:
+      - "33061:3306"
+    command: "--default-authentication-plugin=mysql_native_password"
+
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_PASSWORD: "root"
+      TZ: "UTC"
+    volumes:
+      #      设置初始化脚本
+      - D:\code\golang\eyes\script\mysql\:/docker-entrypoint-initdb.d/
+      - D:\code\golang\eyes\script\mysql\my.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      - elasticsearch-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 3
+      interval: 10s
+
+  memcached:
+    image: "memcached:latest"
+    container_name: "memcached"
+    environment:
+      TZ: "UTC"
+    ports:
+      - "11211:11211"
+    networks:
+      - elasticsearch-network
+
+  redis507:
+    image: "redis:5.0.7"
+    container_name: redis507
+    environment:
+      TZ: "UTC"
+    ports:
+      - "26379:6379"
+    networks:
+      - elasticsearch-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      timeout: 10s
+      retries: 3
+      interval: 10s
+
+  #  eyes:
+  #    restart: always
+  #    build: .
+  #    container_name: eyes
+  #    command: sh -c "./wait-for.sh mysql8029-1:3306 redis507:6379 elasticsearch:9200 kibana:5601 etcd:2379 -- ./eyes --env=prod"
+  #    environment:
+  #      TZ: "UTC"
+  #    depends_on:
+  #      - mysql8029-1
+  #      - redis507
+  #      - elasticsearch
+  #      - etcd
+  #    ports:
+  #      - "8081:8081"
+  #    volumes:
+  #      - web_logs:/var/log/eyes
+  #    networks:
+  #      - elasticsearch-network
+
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: etcd
+    command: [ "etcd", "--data-dir=/etcd-data", "--listen-client-urls=http://0.0.0.0:2379", "--advertise-client-urls=http://etcd:2379" ]
+    ports:
+      - "2379:2379"
+    environment:
+      TZ: "Asia/Shanghai"
+    networks:
+      - elasticsearch-network
+    volumes:
+      - D:\code\golang\eyes\etcd\etcd-data:/etcd-data
+      - D:\code\golang\eyes\etcd\etcd-tls:/etcd-tls  # 挂载 TLS 证书和密钥到容器内
+      - D:\code\golang\eyes\etcd\auth:/auth  # 挂载 TLS 证书和密钥到容器内
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:2379/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  etcd-ui:
+    image: evildecay/etcdkeeper
+    container_name: etcd-ui
+    ports:
+      - "5000:8080"
+    environment:
+      TZ: "UTC"
+    networks:
+      - elasticsearch-network
+
+networks:
+  elasticsearch-network:
+    name: elasticsearch-network
+
+volumes:
+  web_logs:

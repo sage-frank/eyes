@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Captcha Verification</title>
+</head>
+<body>
+<div>
+    <h2>验证码测试</h2>
+    <h5>只取里面的数字和运算符做计算,其余的字符串忽略</h5>
+
+    <!-- 显示验证码图片 -->
+    <img src="/v1/api/ds_login/captcha" alt="Captcha" id="captchaImage">
+
+    <!-- 刷新验证码按钮 -->
+    <button onclick="reloadCaptcha()">Reload Captcha</button>
+
+    <!-- 用户输入验证码 -->
+    <input type="text" id="captchaInput" placeholder="Enter captcha">
+
+    <!-- 提交按钮 -->
+    <button onclick="submitCaptcha()">Verify Captcha</button>
+
+    <label id="verificationResult"></label>
+</div>
+
+</body>
+
+
+<script>
+
+    function clearCaptchaInput() {
+        document.getElementById('captchaInput').value = ''; // 清空输入框
+    }
+
+    // 刷新验证码的函数
+    function reloadCaptcha() {
+        document.getElementById('captchaImage').src = '/v1/api/ds_login/captcha?t=' + new Date().getTime();
+
+        // 清空
+        clearCaptchaInput();
+    }
+
+    // 提交验证码的函数
+    function submitCaptcha() {
+        var captchaInput = document.getElementById('captchaInput').value;
+        fetch('/v1/api/ds_login/verify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({captcha: captchaInput})
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data, "---------");
+                const resultLabel = document.getElementById('verificationResult');
+                if (data.data == "success") { // 假设你的服务器返回的数据中有一个 'success' 字段表示验证是否成功
+                    resultLabel.textContent = '验证成功';
+                    resultLabel.style.color = 'green';
+                } else {
+                    resultLabel.textContent = '验证失败';
+                    resultLabel.style.color = 'red';
+                }
+                reloadCaptcha();
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                reloadCaptcha();
+            });
+    }
+</script>
+
+</html>
