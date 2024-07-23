@@ -3,11 +3,11 @@ dev:
   path: "/config/config-dev.yaml"
   key: ""
 test:
-  host: "http://127.0.0.1:2379"
+  host: "http://etcd:2379"
   path: "/config/config-test.yaml"
   key: ""
 release:
-  host: "http://127.0.0.1:2379"
+  host: "http://etcd:2379"
   path: "/config/config-prod.yaml"
   key: ""
 prod:

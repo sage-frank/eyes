@@ -12,12 +12,11 @@ import (
 
 	"gorm.io/gorm"
 
+	"eyes/internal/domain"
 	"eyes/internal/service/ds_login"
+	C "eyes/internal/web/common"
 	"github.com/fogleman/gg"
 	"github.com/gin-contrib/sessions"
-
-	"eyes/internal/domain"
-	C "eyes/internal/web/common"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

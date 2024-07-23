@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/sessions"
+
 	dslogin "eyes/internal/web/ds_login"
 
 	"eyes/internal/domain"
@@ -44,6 +46,28 @@ import (
 	"gorm.io/driver/mysql"
 )
 
+const (
+	DEV     = "dev"
+	DEBUG   = "debug"
+	RELEASE = "release"
+	PROD    = "prod"
+)
+
+type AppInitializer struct {
+	conf        *setting.AppConfig
+	logger      *zap.Logger
+	esClient    *elasticsearch.Client
+	node        utility.ISFNode
+	redisClient *redis.Client
+	store       sessionRedis.Store
+	bDB         *gorm.DB
+	cDB         *gorm.DB
+}
+
+func NewAppInitializer(conf *setting.AppConfig) *AppInitializer {
+	return &AppInitializer{conf: conf}
+}
+
 func (ai *AppInitializer) Init() *AppInitializer {
 	ai.initLogger().
 		initElasticsearch().
@@ -61,36 +85,6 @@ func (ai *AppInitializer) initDatabases() *AppInitializer {
 	ai.cDB = ai.initDatabase("xiaohongshu_c", ai.logger)
 	return ai
 }
-
-type AppInitializer struct {
-	conf        *setting.AppConfig
-	logger      *zap.Logger
-	esClient    *elasticsearch.Client
-	node        utility.ISFNode
-	redisClient *redis.Client
-	store       sessionRedis.Store
-	bDB         *gorm.DB
-	cDB         *gorm.DB
-}
-
-func NewAppInitializer(conf *setting.AppConfig) *AppInitializer {
-	return &AppInitializer{conf: conf}
-}
-
-//
-//func (ai *AppInitializer) Init() *AppInitializer {
-//	ai.logger = ai.initLogger()
-//	ai.esClient = ai.initElasticsearch()
-//	ai.node = ai.initSnowflakeNode()
-//	ai.redisClient = ai.initRedisClient()
-//	ai.store = ai.initSessionStore()
-//	ai.initValidatorTranslator("zh")
-//
-//	ai.bDB = ai.initDatabase("xiaohongshu_b", ai.logger)
-//	ai.cDB = ai.initDatabase("xiaohongshu_c", ai.logger)
-//	ai.setupDatabaseCallbacks(ai.cDB)
-//	return ai
-//}
 
 func (ai *AppInitializer) initLogger() *AppInitializer {
 	logger, err := middleware.NewLogger(ai.conf.LogConfig, ai.conf.Mode)
@@ -206,18 +200,12 @@ func (ai *AppInitializer) setupDatabaseCallbacks(db *gorm.DB) *AppInitializer {
 	return ai
 }
 
-//
-//func Init(conf *setting.AppConfig) *AppInitializer {
-//	ai := NewAppInitializer(conf)
-//	return ai.Init()
-//}
-
 func MustLoadConfig() *setting.AppConfig {
 	var env string
 	flag.StringVar(&env, "env", "dev", "env must in [dev,release,prod]")
 	flag.Parse()
 
-	if !(env == DEBUG || env == RELEASE || env == PROD) {
+	if !(env == DEV || env == DEBUG || env == RELEASE || env == PROD) {
 		fmt.Println("env must be in [dev release prod]")
 		panic("env must be in [dev release prod]")
 	}
@@ -230,13 +218,9 @@ func MustLoadConfig() *setting.AppConfig {
 	return conf
 }
 
-const (
-	RELEASE = "release"
-	DEBUG   = "debug"
-	PROD    = "prod"
-)
-
 func registerRoutes(engine *gin.Engine, ai *AppInitializer) {
+	engine.Use(sessions.Sessions("mysession", ai.store))
+
 	// monitor
 	{
 
@@ -270,7 +254,7 @@ func registerRoutes(engine *gin.Engine, ai *AppInitializer) {
 		azureRepo := repository.NewAzureRepository(azureDao)
 		azureSrv := serviceAzure.NewAzureService(azureRepo)
 
-		ctl := aad.NewAzureAzureController(azureSrv, ai.logger)
+		ctl := aad.NewAzureController(azureSrv, ai.logger)
 		ctl.RegisterRoutes(engine)
 	}
 
@@ -368,7 +352,6 @@ func registerRoutes(engine *gin.Engine, ai *AppInitializer) {
 
 func main() {
 	conf := MustLoadConfig()
-	// conf := setting.LoadConfig()
 	appInitializer := NewAppInitializer(conf).Init()
 
 	// 创建 Gin 引擎
@@ -378,6 +361,7 @@ func main() {
 	} else {
 		gin.SetMode(DEBUG)
 	}
+	r.LoadHTMLGlob("templates/*")
 
 	registerRoutes(r, appInitializer)
 

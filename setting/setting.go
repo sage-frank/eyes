@@ -2,6 +2,7 @@ package setting
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 
@@ -79,61 +80,73 @@ type Jwt struct {
 }
 
 func LoadRemoteConf(autoconf *AutoConf) (*AppConfig, error) {
-	var (
-		conf AppConfig
-		err  error
-	)
-	fmt.Println(autoconf)
-	if err = viper.AddSecureRemoteProvider("etcd3", autoconf.Host, autoconf.Path, autoconf.SecretKey); err != nil {
-		return nil, fmt.Errorf("viper.AddSecureRemoteProvide: %w", err)
+	var conf AppConfig
+
+	log.Printf("Loading configuration from remote: Host=%s, Path=%s", autoconf.Host, autoconf.Path)
+
+	if err := viper.AddSecureRemoteProvider("etcd3", autoconf.Host, autoconf.Path, autoconf.SecretKey); err != nil {
+		return nil, fmt.Errorf("viper.AddSecureRemoteProvider: %w", err)
 	}
+
 	viper.SetConfigType("yaml")
-	if err = viper.ReadRemoteConfig(); err != nil {
+	if err := viper.ReadRemoteConfig(); err != nil {
 		return nil, fmt.Errorf("viper.ReadRemoteConfig: %w", err)
 	}
 
-	if err = viper.Unmarshal(&conf); err != nil {
-		return nil, fmt.Errorf(" viper.Unmarshal(&conf): %w", err)
+	if err := viper.Unmarshal(&conf); err != nil {
+		return nil, fmt.Errorf("viper.Unmarshal: %w", err)
 	}
 
 	return &conf, nil
 }
 
-func AutoLoad(env string) (*AutoConf, error) {
-	autoConf := new(AutoConf)
+func getConfigPath(env string) (string, error) {
 	executable, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("获取可执行文件路径失败: %v", err)
+		return "", fmt.Errorf("failed to get executable path: %v", err)
 	}
 	configPath := path.Dir(executable)
 	if env == "dev" {
 		configPath = "."
 	}
-	c := viper.New()
-	c.AddConfigPath(path.Join(configPath, "config"))
-	c.SetConfigName("autoload")
-	c.SetConfigType("yaml")
+	return configPath, nil
+}
 
-	err = c.ReadInConfig()
-	if err != nil {
-		return nil, err
+func loadLocalConfig(configPath, env string) (*AutoConf, error) {
+	autoConf := new(AutoConf)
+	v := viper.New()
+	v.AddConfigPath(path.Join(configPath, "config"))
+	v.SetConfigName("autoload")
+	v.SetConfigType("yaml")
+
+	if err := v.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("viper.ReadInConfig: %w", err)
 	}
-	autoConf.Host = c.GetString(fmt.Sprintf("%s.host", env))
-	autoConf.Path = c.GetString(fmt.Sprintf("%s.path", env))
-	autoConf.SecretKey = c.GetString(fmt.Sprintf("%s.key", env))
+	autoConf.Host = v.GetString(fmt.Sprintf("%s.host", env))
+	autoConf.Path = v.GetString(fmt.Sprintf("%s.path", env))
+	autoConf.SecretKey = v.GetString(fmt.Sprintf("%s.key", env))
 	return autoConf, nil
 }
 
-func LoadConf(env string) (conf *AppConfig, err error) {
+func AutoLoad(env string) (*AutoConf, error) {
+	configPath, err := getConfigPath(env)
+	if err != nil {
+		return nil, fmt.Errorf("获取配置路径失败: %w", err)
+	}
+
+	log.Printf("Loading local configuration: Path=%s", configPath)
+	return loadLocalConfig(configPath, env)
+}
+
+func LoadConf(env string) (*AppConfig, error) {
 	autoConf, err := AutoLoad(env)
 	if err != nil {
 		return nil, fmt.Errorf("读取autoload配置文件失败: %w", err)
 	}
 
-	conf, err = LoadRemoteConf(autoConf)
+	conf, err := LoadRemoteConf(autoConf)
 	if err != nil {
-		fmt.Println("从远程配置中心读取配置文件失败:", err.Error())
-		return nil, fmt.Errorf("从远程配置中心读取配置文件失败:%w", err)
+		return nil, fmt.Errorf("从远程配置中心读取配置文件失败: %w", err)
 	}
 
 	return conf, nil
